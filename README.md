@@ -8,4 +8,5 @@ important packages:
 - pip install bioio
 - pip install bioio-bioformats
 (needs python >=3.10)
+
 these don't seem to work with anaconda
