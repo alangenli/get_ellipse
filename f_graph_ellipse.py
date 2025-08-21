@@ -106,7 +106,7 @@ GRAPHS
 """
 ##############################################################################
 
-def plot_y(y, x = [], xy_lab=[], title=[], colour='b', linewidth=1, marker_style='', scale=[.7*6, .7*4.8]):
+def plot_y(y, x = [], xy_lab=[], title=[], colour='b', linewidth=1, marker_style='', msize=5, scale=[.7*6, .7*4.8]):
     """
     FUNCTION
     
@@ -120,9 +120,9 @@ def plot_y(y, x = [], xy_lab=[], title=[], colour='b', linewidth=1, marker_style
     fig, axs = plt.subplots(figsize=scale)
     axs.spines[['right', 'top']].set_visible(False)
     if len(x)!=0:
-        axs.plot(x, y, color=colour, linewidth=linewidth, marker=marker_style)
+        axs.plot(x, y, color=colour, linewidth=linewidth, marker=marker_style, markersize=msize)
     else:
-        axs.plot(y, color=colour, linewidth=linewidth, marker=marker_style)
+        axs.plot(y, color=colour, linewidth=linewidth, marker=marker_style, markerseize=msize)
         axs.set_xlabel('index')
     #LABELS
     if len(xy_lab)!=0:
@@ -284,12 +284,12 @@ def plot_xy_N_leg(x, y, xy_lab, leglabels, altstyle=0, scale=[.7*6, .7*4.8], fil
         colours = ['green', 'r', 'deepskyblue', 'indigo','crimson', 'orangered', 'goldenrod']
     elif altstyle % 5==4:
         colours = ['lightskyblue', 'b', 'k']
-    if altstyle>=5 and altstyle<10:
+    if altstyle%20>=5 and altstyle%20<10:
         lstyles = 10*[None]
         lwidths = 10*[0]
         markers = 10*['.']
         markersizes = 10*[5]
-    elif altstyle>=10 and altstyle<15:
+    elif altstyle%20>=10 and altstyle%20<15:
         lstyles = ['', '--', '-']
         lwidths = [0, 2, 2]
         markers = ['.', '', '']
@@ -299,32 +299,62 @@ def plot_xy_N_leg(x, y, xy_lab, leglabels, altstyle=0, scale=[.7*6, .7*4.8], fil
         lwidths = 10*['1']
         markers = 10*['']
         markersizes = 10*[0]
-    #SINGLE PLOT
-    fig, axs = plt.subplots(figsize=(scale[0], scale[1]))
-    axs.spines[['top', 'right']].set_visible(False)
-    #SHARED X VECTOR
-    if len(x)!=len(y):
-        for j, ydata in enumerate(y):
-            axs.plot(x, ydata, label=leglabels[j], linestyle=lstyles[j], linewidth=lwidths[j], marker = markers[j], markersize=markersizes[j], color=colours[j], alpha=.75)
-    #VARYING X VECTOR
-    else:
-        for j, ydata in enumerate(y):
-            axs.plot(x[j], ydata, label=leglabels[j], linestyle=lstyles[j], linewidth=lwidths[j], marker = markers[j], markersize=markersizes[j], color=colours[j], alpha=.75)
+    if altstyle<20:
+        #SINGLE PLOT
+        fig, axs = plt.subplots(figsize=(scale[0], scale[1]))
+        axs.spines[['top', 'right']].set_visible(False)
+        #SHARED X VECTOR
+        if len(x)!=len(y):
+            for j, ydata in enumerate(y):
+                axs.plot(x, ydata, label=leglabels[j], linestyle=lstyles[j], linewidth=lwidths[j], marker = markers[j], markersize=markersizes[j], color=colours[j], alpha=.75)
+        #VARYING X VECTOR
+        else:
+            for j, ydata in enumerate(y):
+                axs.plot(x[j], ydata, label=leglabels[j], linestyle=lstyles[j], linewidth=lwidths[j], marker = markers[j], markersize=markersizes[j], color=colours[j], alpha=.75)
+    
+        axs.set_xlabel(xy_lab[0])
+        axs.set_ylabel(xy_lab[1])
+        #LEGEND
+        if len(leglabels)>len(y):
+            axs.legend(frameon=False, title=leglabels[-1])
+        else:
+            axs.legend(frameon=False)
+        #TITLE
+        if len(xy_lab)==3:
+            axs.set_title(xy_lab[2])
+    elif altstyle>=20:
+        #HORIZONTAL STACK, SINGLE LEGEND
+        N = len(y)
+        fig, axs = plt.subplots(1, N, figsize=(scale[0], scale[1]))
+        for i in range(N):
+            #VARIED X VECTOR
+            if len(x[i])==len(y[i]):
+                for j, ydata in enumerate(y[i]):
+                    axs[i].plot(x[i][j], ydata, label=leglabels[j], linestyle=lstyles[j], linewidth=lwidths[j], marker = markers[j], markersize=markersizes[j], color=colours[j])
+                    axs[i].spines[['top', 'right']].set_visible(False)
+            #SHARED x vector
+            else:
+                for j, ydata in enumerate(y[i]):
+                    axs[i].plot(x[i], ydata, label=leglabels[j], linestyle=lstyles[j], linewidth=lwidths[j], marker = markers[j], markersize=markersizes[j], color=colours[j])
+                    axs[i].spines[['top', 'right']].set_visible(False)
+        
+        #SET X Y LABELS
+        set_xy_labels_N(N, fig, axs, xy_lab[0], xy_lab[1])
 
-    axs.set_xlabel(xy_lab[0])
-    axs.set_ylabel(xy_lab[1])
-    #LEGEND
-    if len(leglabels)>len(y):
-        axs.legend(frameon=False, title=leglabels[-1])
-    else:
-        axs.legend(frameon=False)
-    #TITLE
-    if len(xy_lab)==3:
-        axs.set_title(xy_lab[2])
+        #LEGEND
+        if len(leglabels)>len(y[0]):
+            #LEGEND WITH TITLE
+            axs[ax_legend].legend(frameon=False, title=leglabels[-1])
+        else:
+            #LEGEND NO TITLE
+            axs[ax_legend].legend(frameon=False)
+        #TITLES
+        if len(xy_lab)>=3:
+            set_titles_N(N, fig, axs, xy_lab[2])
 
     plt.tight_layout(w_pad=1)
     if file_name!=0:
-        plt.savefig(file_name+'.png', dpi=300, bbox_inches='tight')  
+        plt.savefig(file_name+'.png', dpi=300, bbox_inches='tight')
 
 
 def plot_xy_N_colour(x, y, z, xyz_label, altstyle=0, scale=[.7*6, .7*4.8], file_name=0, reverse_colour=False):
