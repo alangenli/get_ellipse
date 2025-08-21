@@ -268,7 +268,7 @@ else:
         KYMOGRAPH
         """
         #CONVERT xy pixel number to index in original image
-        idx_row = nrow - xy_data[:,1]
+        idx_row = nrow - xy_data[:,1] - 1
         idx_col = xy_data[:,0]
         #get intensity from the raw image
         im_val = im_raw[idx_row, idx_col]
