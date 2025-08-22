@@ -36,7 +36,6 @@ class ellipse():
         param_names = ['a', 'b', 'x0', 'y0', 'theta']
         pd.DataFrame(np.array([self.a, self.b, self.x0, self.y0, self.theta]), index=param_names).to_csv(out_dir, sep='\t', header=False)
 
-        
     def get_points(self, num):
         t = np.linspace(0, 2*np.pi, num)
         self.x = self.a*np.cos(t)*np.cos(self.theta) - self.b*np.sin(t)*np.sin(self.theta) + self.x0
@@ -47,7 +46,7 @@ class circle():
         """
         CLASS INITIALISATION
         
-        ellipse parameters
+        circle parameters
         """
         self.r = r
         self.x0 = x0
@@ -104,27 +103,12 @@ def remove_outliers_xy(xy_data, std_thresh):
     """
     xy_mean = np.mean(xy_data, axis=0)
     xy_std = np.std(xy_data, axis=0)
+    outliers = xy_data[(abs(xy_data[:,0]-xy_mean[0]) >= std_thresh*xy_std[0]) | (abs(xy_data[:,1]-xy_mean[1]) <= std_thresh*xy_std[1])]
     xy_data = xy_data[(abs(xy_data[:,0]-xy_mean[0]) < std_thresh*xy_std[0]) & (abs(xy_data[:,1]-xy_mean[1]) < std_thresh*xy_std[1])]
     
-    return xy_data
+    return xy_data, outliers
     
-'''
-def sort_vec(key, X):
-    """
-    sort all data within X by the key vector
-    must have the same dimensions
-
-    """
-    idx_sort = np.argsort(key)
-    key = key[idx_sort]
-    if type(X)==list:
-        for n, vec in enumerate(X):
-            X[n] = vec[idx_sort]
-    else:
-        X = X[idx_sort]
-    return key, X
-'''
 
 def movmean(x, w):
-    return np.convolve(x, np.ones(w), mode='same')/w
+    return np.convolve(x, np.ones(w)/w, mode='same')
 

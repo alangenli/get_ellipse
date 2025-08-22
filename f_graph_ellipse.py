@@ -100,6 +100,17 @@ def equalise_axes():
     ax=plt.gca()
     ax.set_aspect('equal', adjustable='box')
 
+def add_scatter(x, y, colour='r', msize=5, leg_label=None, leg_colour='k', file_name=0):
+    """
+    FUNCTION
+    to add an additional scatter plot to a previous plot
+    """
+    ax = plt.gca()
+    ax.plot(x, y, label=leg_label, color=colour, linestyle='', marker='o', markersize=msize, fillstyle='none')
+    if leg_label!=None:
+        ax.legend(framealpha=1, fancybox=False)
+
+
 ##############################################################################
 """
 GRAPHS
@@ -281,7 +292,7 @@ def plot_xy_N_leg(x, y, xy_lab, leglabels, altstyle=0, scale=[.7*6, .7*4.8], fil
     elif altstyle % 5==2:
         colours = ['green', 'r', 'deepskyblue', 'indigo','crimson', 'orangered', 'goldenrod']
     elif altstyle % 5==3:
-        colours = ['green', 'r', 'deepskyblue', 'indigo','crimson', 'orangered', 'goldenrod']
+        colours = ['r', 'green', 'indigo', 'deepskyblue', 'crimson', 'orangered', 'goldenrod']
     elif altstyle % 5==4:
         colours = ['lightskyblue', 'b', 'k']
     if altstyle%20>=5 and altstyle%20<10:
@@ -499,15 +510,6 @@ def add_right_yaxis(x, y, ylabel, colour='r', file_name=0):
     if file_name!=0:
         plt.savefig(file_name+'.png', dpi=300, bbox_inches='tight')    
 
-def add_scatter(x, y, colour='r', msize=5, leg_label=None, leg_colour='k', file_name=0):
-    """
-    FUNCTION
-    to add an additional scatter plot to a previous plot
-    """
-    ax = plt.gca()
-    ax.plot(x, y, label=leg_label, color=colour, linestyle='', marker='o', markersize=msize, fillstyle='none')
-    if leg_label!=None:
-        ax.legend(framealpha=1, fancybox=False)
 
 def invert_xaxis(sel_ax=0, file_name=0):
     """

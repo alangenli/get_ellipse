@@ -24,7 +24,7 @@ in_folder = "DATA_FOLDER"
 data_ext = ".tif"
 
 #SELECT CHANNEL BY INDEX (0, 1, 2)
-sel_ch = 1
+sel_ch = 2
 
 #light wavelengths for each channel [nm]
 ch_wav = [482, 561, 632]
@@ -34,16 +34,39 @@ ch_colour = ['b', 'green', 'r']
 ##############################################################################
 #SCRIPT PARAMETERS
 ##############################################################################
+#size of median filter (integer)
+#0 for no median filtering 
+#generally not needed if data is clean
+#RECOMMENDED DEFAULT: med_filt = 0
+med_filt = 1
+
+#set thresh_val = 'auto' to apply automatic thresholding
+#otherwise threshold by the specified value
+#RECOMMENDED DEFAULT: thresh_val = 'auto'
+thresh_val = 0
+
+#CROPPING RANGES IN DATA MASK
+#radius of target area, calculated from centre of the image
+#measured in pixels
+#outside of the ranges, image = 0
+#RECOMMENDED DEFAULT: crop_radius = 0
+crop_radius = 100
+
 #number of standard deviations used to define outliers in data
 #set very high to keep all data
 #mainly useful for fitting ellipse
 #RECOMMENDED DEFAULT: outlier_std_thresh = 2
-outlier_std_thresh = 2
+outlier_std_thresh = 5
+
+#HOUGH TRANSFORM
+#hough transform better for noisy data
+#provide a range of radii for fitting a circle
+hough_radius_guess = [30, 50]
 
 #WIDTH PARAMETER
 #used to define boundaries for data filtering
-#RECOMMENDED DEFAULT: width_param = .05
-width_param = .05
+#RECOMMENDED DEFAULT: width_param = .1
+width_param = .1
 
 #SMOOTHING WINDOW for moving average, used for kymographs
 #RECOMMENDED DEFAULT: movmean_win = 20
@@ -122,11 +145,41 @@ else:
             FIG.plot_image(im_raw, title=f"{file_name}\nraw data, ch idx {sel_ch}", colour_map='gray', resolution=100)
         
         """
+        CROPPING
+        """
+        if crop_radius!=0:
+            print(f'\nCROPPING IMAGE, target radius = {crop_radius}\n')
+            #define circle at centre of image, set all points outside of circle to 0
+            im_filt[((np.arange(nrow)[np.newaxis].T - nrow/2)**2 + (np.arange(ncol)[np.newaxis] - ncol/2)**2 > (crop_radius)**2)] = 0
+            if plot_crop:
+                FIG.plot_image(im_filt>0, title=f"{file_name}, ch idx {sel_ch}\ncropped data mask", colour_map='gray', resolution=100)
+
+
+        """
+        OBTAIN DATA MASK
+        """
+        if med_filt!=0:
+            print("\nAPPLYING MEDIAN FILTER\n")
+            #SKIMAGE MEDIAN FILTERING
+            im_filt = ski.filters.rank.median(im_filt, ski.morphology.disk(med_filt))
+            mask = im_filt>0
+            if plot_med_filt:
+                FIG.plot_image(mask, title=f"{file_name}, ch idx {sel_ch}\nmedian-filtered data mask", colour_map='gray', resolution=100)
+        
+        """
         THRESHOLDING
         """
-        #apply threshold value
-        mask = im_filt > ski.filters.threshold_otsu(im_filt)
-        print(f"\nAUTOMATIC THRESHOLDING, thresh_val = {ski.filters.threshold_otsu(im_raw)}\n")
+        if thresh_val=='auto':
+            #apply threshold value
+            mask = im_filt > ski.filters.threshold_otsu(im_filt)
+            print(f"\nAUTOMATIC THRESHOLDING, thresh_val = {ski.filters.threshold_otsu(im_raw)}\n")
+        else:
+            #apply threshold value
+            mask = im_filt > thresh_val
+            if thresh_val==0:
+                print(f"\nthresh_val = {thresh_val} so no threshold applied.\n")
+            else:
+                print(f"\napplying specified threshold of thresh_val = {thresh_val}\n")
         #update filtered image
         im_filt[~mask] = 0
 
@@ -152,52 +205,38 @@ else:
                        colour=ch_colour[sel_ch], marker_style='.', linewidth=0, msize=2)
             FIG.equalise_axes()
 
-        """
-        FIT ELLIPSE TO DATA MASK
-        """
-        print("\nfitting ellipse to raw data\n")
-        
-        #calculate least squares parameters
-        param_raw = np.linalg.lstsq(ELL.mat_conic_sec(*xy_data.T), np.ones((nxy,1)))
-        #create ellipse model
-        model_raw = ELL.ellipse(*np.squeeze(ELL.get_ellipse_param(*param_raw[0])))
-        #get xy coordinates from ellipse model
-        model_raw.get_points(num=nxy)
-
-        """
-        FIND NEAREST DATA POINTS TO ELLIPSE MODEL
-        """
-        #identify the point within the original data CLOSEST to the ellipse model
-        nearest_data = xy_data[ [np.argmin( np.linalg.norm(xy_data - np.array([model_raw.x[i], model_raw.y[i]]), axis=1) ) for i in range(nxy)] ]
         
         """
-        FIT ELLIPSE TO NEAREST DATA POINTS
+        HOUGH CIRCLE TRANSFORM
         """
-        #calculate least squares parameters
-        param_best = np.linalg.lstsq(ELL.mat_conic_sec(*nearest_data.T), np.ones((nxy,1)))
-        #create ellipse model
-        model_near = ELL.ellipse(*np.squeeze(ELL.get_ellipse_param(*param_best[0])))
-
+        hough_radii = np.arange(hough_radius_guess[0], hough_radius_guess[1])
+        #perform hough circle transform and get parameters
+        hough_accums, c_col, c_row, radii =  ski.transform.hough_circle_peaks(ski.transform.hough_circle(im_filt>0, hough_radii), hough_radii, total_num_peaks=1)
+        
         """
-        DEFINE CIRCLE BOUNDARIES FROM ELLIPSE AXES
+        DEFINE CIRCLE PARAMETERS FROM HOUGH RADIUS
         """
-        #upper radius
-        r_upper = (1+width_param)*model_near.major
-        #lower radius
-        r_lower = (1-width_param)*model_near.minor
         #center coordinates
-        x0 = model_near.x0
-        y0 = model_near.y0
-    
-        #RAW FIT, NEAREST DATA POINTS, NEAREST FIT
+        hough_r = radii[0]
+        x0 = c_col[0]
+        y0 = nrow-1-c_row[0]
+        #upper radius
+        r_upper = (1+width_param)*hough_r
+        #lower radius
+        r_lower = (1-width_param)*hough_r
+        
+        #RAW FIT, HOUGH FIT
         if plot_ellipse_fit:
-            model_near.get_points(num=nxy)
-            FIG.plot_xy_N_leg(x=[xy_data[:,0], model_raw.x, model_near.x], 
-                              y=[xy_data[:,1], model_raw.y, model_near.y], 
+            #get hough circle parameters (convert from rowcol to index)
+            circ_hough = ELL.circle(r=hough_r, x0 = x0, y0 = y0)
+            circ_hough.get_points(num=nxy)
+            FIG.plot_xy_N_leg(x=[xy_data[:,0], circ_hough.x], 
+                              y=[xy_data[:,1], circ_hough.y], 
                               xy_lab=['x', 'y', f"{file_name}, ch idx {sel_ch}"], 
-                              leglabels=['data mask', 'raw fit', 'nearest fit'], 
-                              altstyle=11)
+                              leglabels=['data mask', 'Hough fit'], 
+                              altstyle=11, scale=[6, 4.8])
             FIG.equalise_axes()
+            
 
         """
         PLOT UPPER AND LOWER BOUNDARIES
