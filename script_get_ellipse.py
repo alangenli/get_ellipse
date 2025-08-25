@@ -24,7 +24,7 @@ in_folder = "DATA_FOLDER"
 data_ext = ".tif"
 
 #SELECT CHANNEL BY INDEX (0, 1, 2)
-sel_ch = 1
+sel_ch = 0
 
 #light wavelengths for each channel [nm]
 ch_wav = [482, 561, 632]
@@ -57,17 +57,22 @@ debug_filename = 'C2_+PIPI2+VAP+Sept-6-2'
 
 
 #plot bools
+#raw data
 plot_raw = 1
-plot_crop = 0
-plot_med_filt = 0
-plot_mask = 1
-plot_filt = 1
+#mask of raw data used to fit ellipse
+plot_mask = 0
+#retained data after fitting ellipse
+plot_filt = 0
+#raw and retained data
+plot_filt_overlay = 1
+#kymographs
 plot_kymo_ang = 0
 plot_kymo_radial = 0
-#plot bools for more fancy graph
+
+#plot bools for more fancy graphs
 plot_ellipse_fit = 0
-plot_circ_bounds = 1
-plot_filt_fancy = 0
+plot_circ_bounds = 0
+plot_filt_mask_fancy = 0
 
 
 #to save model ellipse parameters 
@@ -119,7 +124,7 @@ else:
         im_filt = 1*im_raw
         #PLOT RAW IMAGE
         if plot_raw:
-            FIG.plot_image(im_raw, title=f"{file_name}\nraw data, ch idx {sel_ch}", colour_map='gray', resolution=100)
+            FIG.plot_image(im_raw, title=f"{file_name}, ch idx {sel_ch}\nraw data", colour_map='gray', resolution=100)
         
         """
         THRESHOLDING
@@ -254,13 +259,14 @@ else:
             FIG.equalise_axes()
             
         #plot retained and rejected data
-        if plot_filt_fancy:
+        if plot_filt_mask_fancy:
             FIG.plot_xy_N_leg(x=[[xy_data_rej[:,0], xy_data_centred[:,0]], [data_ang_rej, data_ang]], 
                               y=[[xy_data_rej[:,1], xy_data_centred[:,1], ], [data_rpos_rej, data_rpos]], 
-                              xy_lab=[['x', 'angle [rad]'], ['y', 'radial position [pixels]'], ['x-y coordinates', 'radial position vs angle', f'{file_name}, ch idx {sel_ch}\nretained and rejected raw data points']], 
+                              xy_lab=[['x', 'angle [rad]'], ['y', 'radial position [pixels]'], ['x-y coordinates', 'radial position vs angle', f'{file_name}, ch idx {sel_ch}\nretained and rejected data mask points']], 
                               leglabels=['rejected', 'retained'], 
                               altstyle=28, 
                               scale=[1.3*6, 4.8], ax_legend=1)
+
 
 
         
@@ -280,6 +286,12 @@ else:
         if save_kymo:
             kymo_data.to_csv(f'{in_folder}/{file_name}_ch_idx{sel_ch}_kymo_data.txt', sep='\t', index=False)
         
+        #OVERLAY RETAINED DATA OVER RAW IMAGE
+        if plot_filt_overlay:
+            im_ret = ski.color.gray2rgb(im_raw)
+            im_ret[idx_row, idx_col] = (20, 220, 20)
+            FIG.plot_image(im_ret, title=f"{file_name}, ch idx {sel_ch}\nraw and retained data", resolution=100)
+
         
         #PLOT KYMOGRAPH
         if plot_kymo_ang:
